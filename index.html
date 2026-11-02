@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<title>NYC Trip Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: white page, sticky header with always-visible tabs, one view at a time. Condensed signage type, a colour per day. Single light look by design. */
+:root{
+  color-scheme:light;
+  --bg:#ffffff; --soft:#f4f6f7; --soft2:#e9edf0; --fg:#15191c; --muted:#5f6a70; --line:#e2e6e9;
+  --ink:#15191c; --d1:#e0512b; --d2:#1f63d1; --d3:#a3237f; --link:#1f63d1; --ok:#2f7d4f; --okbg:#e9f5ee; --warn:#a85a07; --warnbg:#fff5e6; --danger:#c0362c;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15.5px;line-height:1.5}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+h1,h2,h3,h4{margin:0;line-height:1.08;text-wrap:balance;font-family:var(--display)}
+.inner{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Header + tabs */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgb(255 255 255 / .96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .inner{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-block:10px 0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;padding-bottom:10px}
+.brand .mark{width:30px;height:30px;border-radius:8px;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 15px var(--display)}
+.brand b{font:700 21px var(--display)}
+.brand small{display:block;font-size:12.5px;color:var(--muted);line-height:1.1}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-left:auto;max-width:100%}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{flex:none;text-decoration:none;display:flex;align-items:center;gap:7px;padding:9px 11px 12px;font:600 15.5px var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a:hover{color:var(--fg)}
+.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--c, var(--ink))}
+.tabs .dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
+@media (max-width:759px){.top .inner{gap:0}.tabs{margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));width:calc(100% + 2 * max(16px,env(safe-area-inset-left,0px)));max-width:none}.tabs a{padding:8px 9px 11px;font-size:15px}}
+
+main{padding-block:28px 56px}
+.view{display:grid;gap:28px}
+.eyebrow{font:600 13px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.notice{background:var(--soft);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--muted)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 14px;font-weight:600;font-size:14.5px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:#c4ccd1;background:var(--soft)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#2b3237}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:5px 10px;font-size:13.5px;border-radius:8px}
+.icon-btn{width:32px;height:32px;border:0;background:none;border-radius:8px;display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.icon-btn:hover{background:var(--soft);color:var(--fg)}
+.icon-btn:disabled{opacity:.3;cursor:default;background:none}
+.icon-btn svg{width:17px;height:17px}
+
+/* Hero */
+.hero{display:grid;gap:18px;grid-template-columns:minmax(0,1fr);align-items:end;padding-bottom:22px;border-bottom:2px solid var(--fg)}
+@media (min-width:760px){.hero{grid-template-columns:minmax(0,1fr) auto}}
+.hero h1{font-size:clamp(42px,8vw,76px);font-weight:700;margin-top:4px}
+.hero p{margin:8px 0 0;color:var(--muted);max-width:56ch}
+.count{display:flex;align-items:baseline;gap:10px;font-family:var(--display)}
+.count b{font-size:64px;font-weight:700;line-height:.9;color:var(--d1);font-variant-numeric:tabular-nums}
+.count span{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);max-width:7em;line-height:1.15}
+.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.strip a{text-decoration:none;padding:14px 16px;display:grid;gap:2px;border-left:1px solid var(--line)}
+.strip a:first-child{border-left:0}
+.strip a:hover{background:var(--soft)}
+.strip .k{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.strip .k .dot{width:8px;height:8px;border-radius:50%}
+.strip b{font:700 20px var(--display);line-height:1.15}
+.strip span.s{font-size:13px;color:var(--muted)}
+@media (max-width:620px){.strip{grid-template-columns:1fr}.strip a{border-left:0;border-top:1px solid var(--line)}.strip a:first-child{border-top:0}}
+.mapcard{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-decoration:none;background:linear-gradient(135deg,#eef4fb 0%,#ffffff 70%)}
+.mapcard:hover{border-color:#c4ccd1}
+.mapcard .pinic{flex:none;width:42px;height:42px;border-radius:12px;background:var(--link);display:grid;place-items:center}
+.mapcard .pinic svg{width:22px;height:22px}
+.mapcard b{font:700 19px var(--display);display:block}
+.mapcard span{font-size:13.5px;color:var(--muted)}
+.mapcard .go{margin-left:auto;color:var(--link);font-weight:600;white-space:nowrap}
+.sect-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sect-h h2{font-size:26px;font-weight:700}
+
+/* Tickets */
+.tickets{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.ticket{background:var(--bg);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgb(16 24 32 / .04),0 8px 24px rgb(16 24 32 / .05);display:grid;grid-template-rows:auto 1fr;min-width:0}
+.t-top{padding:16px 18px 14px;display:grid;gap:10px;border-bottom:2px dashed var(--line);position:relative;border-radius:16px 16px 0 0;background:linear-gradient(180deg,var(--soft) 0%,var(--bg) 100%)}
+.t-top::before,.t-top::after{content:"";position:absolute;bottom:-11px;width:20px;height:20px;border-radius:50%;background:var(--bg);border:1px solid var(--line)}
+.t-top::before{left:-11px;clip-path:inset(0 0 0 50%)}
+.t-top::after{right:-11px;clip-path:inset(0 50% 0 0)}
+.t-kind{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.t-kind .eyebrow{color:var(--fg);display:flex;align-items:center;gap:8px}
+.t-kind .eyebrow i{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font:700 12px var(--display);font-style:normal;color:#fff;background:var(--ink)}
+.t-date{font:500 12.5px var(--mono);color:var(--muted)}
+.route{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:end;gap:10px}
+.route .pt:last-child{text-align:right}
+.route .code{font:700 38px/1 var(--display);letter-spacing:.02em}
+.route .tm{font:500 14px var(--mono);margin-top:3px}
+.route .pl{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.route .arr{color:var(--muted);padding-bottom:20px}
+.route .pre{font:600 11.5px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.t-body{padding:16px 18px;display:grid;gap:10px;align-content:start}
+dl.kv{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;font-size:14.5px}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;overflow-wrap:anywhere}
+.conf{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.conf code{font:500 14px var(--mono);letter-spacing:.04em;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+.copy{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:1px 9px;font-size:12px;color:var(--muted);cursor:pointer}
+.copy:hover{color:var(--fg);border-color:var(--muted)}
+.t-note{font-size:13.5px;color:var(--muted);margin:0}
+.gm{font-size:14px;font-weight:600;text-decoration:none;color:var(--link)}
+.gm:hover{text-decoration:underline}
+
+/* Lists (to-do, to book) */
+.list-wrap{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.list-wrap{grid-template-columns:260px minmax(0,1fr);align-items:start}}
+.progress{background:var(--soft);border-radius:16px;padding:18px;display:grid;gap:10px}
+.progress b{font:700 48px/1 var(--display)}
+.progress .bar{height:8px;border-radius:99px;background:var(--soft2);overflow:hidden}
+.progress .bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}
+.items{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.item{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:8px;align-items:start;padding:14px 12px 14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.item.done{background:var(--soft)}
+.item input[type=checkbox]{width:20px;height:20px;margin:2px 0 0;accent-color:var(--ok);cursor:pointer}
+.item .txt{display:grid;gap:3px;min-width:0}
+.item .ti{font:700 18px/1.2 var(--display)}
+.item .td{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.item .wh{font:600 11.5px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--warn)}
+.item.done .ti{text-decoration:line-through;color:var(--muted)}
+.item .acts{display:flex;gap:2px}
+.status{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--display);letter-spacing:.1em;text-transform:uppercase;border-radius:99px;padding:3px 10px;border:0;cursor:pointer}
+.status.todo{background:var(--warnbg);color:var(--warn)}
+.status.done{background:var(--okbg);color:var(--ok)}
+.res{grid-template-columns:minmax(0,1fr) auto}
+.res .meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px;color:var(--muted);align-items:center}
+.res code{font:500 13px var(--mono);color:var(--fg)}
+
+/* Day */
+.dayhead{border-radius:18px;padding:22px 22px 20px;background:var(--c);color:#fff;display:grid;gap:8px;position:relative;overflow:hidden}
+.dayhead::after{content:attr(data-num);position:absolute;right:14px;bottom:-34px;font:700 170px/1 var(--display);opacity:.14;pointer-events:none}
+.dayhead .eyebrow{color:rgb(255 255 255 / .85)}
+.dayhead h1{font-size:clamp(32px,6vw,52px);font-weight:700;max-width:18ch}
+.dayhead .row{display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
+.dayhead .btn{background:rgb(255 255 255 / .16);border-color:rgb(255 255 255 / .3);color:#fff}
+.dayhead .btn:hover{background:rgb(255 255 255 / .26)}
+.dayhead .btn.solid{background:#fff;color:var(--fg);border-color:#fff}
+.day{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+@media (min-width:960px){.day{grid-template-columns:minmax(0,1fr) 320px;align-items:start}.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 112px)}}
+.side{display:grid;gap:12px;align-content:start}
+.tl{list-style:none;margin:0;padding:0}
+.tl > li{position:relative}
+.ev{display:grid;grid-template-columns:70px 30px minmax(0,1fr);column-gap:10px}
+.when{font:500 13px var(--mono);text-align:right;padding-top:15px;font-variant-numeric:tabular-nums;line-height:1.3}
+.when small{display:block;color:var(--muted);font-size:11.5px}
+.rail{position:relative;display:flex;justify-content:center}
+.rail::before{content:"";position:absolute;top:0;bottom:0;width:2px;background:var(--line)}
+.tl > li:first-child .rail::before{top:16px}
+.tl > li:last-child .ev .rail::before{bottom:calc(100% - 16px)}
+.node{position:relative;margin-top:12px;width:26px;height:26px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font:700 13px var(--display);box-shadow:0 0 0 4px var(--bg)}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 8px 11px 14px;margin:6px 0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:#c4ccd1}
+.card .main{display:grid;gap:3px;min-width:0;cursor:pointer}
+.card h4{font-size:20px;font-weight:700}
+.card .addr{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.card .notes{margin:2px 0 0;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.card .tools{display:flex;align-items:flex-start;gap:0}
+.handle{cursor:grab;touch-action:none}
+.handle:active{cursor:grabbing}
+.legrow{display:grid;grid-template-columns:70px 30px minmax(0,1fr);column-gap:10px}
+.leg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:3px 0 3px 2px;flex-wrap:wrap}
+.leg .mode{font:600 12px var(--display);letter-spacing:.1em;text-transform:uppercase;border-radius:5px;padding:1px 7px;color:#fff;background:var(--ink)}
+.leg .mode.subway{background:var(--d2)}
+.leg .mode.taxi,.leg .mode.car{background:var(--muted)}
+.leg a{color:var(--link);text-decoration:none;font-weight:600}
+.leg a:hover{text-decoration:underline}
+li.dragging{z-index:5}
+li.dragging .card{box-shadow:0 14px 36px rgb(16 24 32 / .18);border-color:var(--c)}
+li.dragging .leg, li.dragging .legrow{visibility:hidden}
+.addrow{display:grid;grid-template-columns:70px 30px minmax(0,1fr);column-gap:10px;margin-top:4px}
+.addbtn{border:2px dashed var(--line);background:none;border-radius:14px;padding:12px;font-weight:600;color:var(--muted);cursor:pointer;text-align:left}
+.addbtn:hover{border-color:var(--c);color:var(--fg)}
+.empty{border:2px dashed var(--line);border-radius:16px;padding:28px 22px;display:grid;gap:10px;justify-items:start;background:var(--soft)}
+.empty b{font:700 22px var(--display)}
+.empty span{color:var(--muted)}
+
+/* Modal */
+.scrim{position:fixed;inset:0;z-index:50;background:rgb(15 20 24 / .45);display:flex;align-items:flex-end;justify-content:center;padding:env(safe-area-inset-top,0px) 0 0}
+@media (min-width:640px){.scrim{align-items:center;padding:24px}}
+.sheet{background:var(--bg);width:100%;max-width:520px;max-height:calc(100% - 24px);overflow:auto;border-radius:18px 18px 0 0;padding:20px max(18px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:grid;gap:16px;box-shadow:0 -10px 40px rgb(0 0 0 / .2)}
+@media (min-width:640px){.sheet{border-radius:18px;padding:22px 24px}}
+.sheet h2{font-size:26px;font-weight:700}
+.q{display:grid;gap:6px}
+.q > span{font-weight:600}
+.q small{color:var(--muted);font-size:13px;margin-top:-4px}
+.q input,.q select,.q textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font-size:16px}
+.q textarea{min-height:76px;resize:vertical}
+.q input:focus,.q select:focus,.q textarea:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 3px var(--soft2)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pills label{position:relative}
+.pills input{position:absolute;opacity:0;pointer-events:none}
+.pills span{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:6px 13px;font-size:14px;font-weight:500;cursor:pointer}
+.pills input:checked + span{background:var(--ink);border-color:var(--ink);color:#fff}
+.pills input:focus-visible + span{outline:2px solid var(--link);outline-offset:2px}
+.sheet .bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.sheet .bar .spacer{margin-right:auto}
+.err{color:var(--danger);font-size:13.5px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:9px 14px;font-size:14px;z-index:60;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px rgb(0 0 0 / .2)}
+.toast button{background:none;border:0;color:#9cc3ff;font-weight:600;cursor:pointer}
+.foot{margin:44px 0 0;font-size:12.5px;color:var(--muted);max-width:72ch}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head><body>
+
+
+<header class="top">
+  <div class="inner">
+    <a class="brand" href="#bookings"><span class="mark">NY</span><span><b>NYC Trip</b><small>29 Nov – 1 Dec 2026</small></span></a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#bookings" style="--c:var(--ink)">Bookings</a>
+      <a href="#reserve" style="--c:var(--warn)">To book</a>
+      <a href="#todo" style="--c:var(--ok)">To-do</a>
+      <a href="#day-1" style="--c:var(--d1)"><span class="dot"></span>Day 1</a>
+      <a href="#day-2" style="--c:var(--d2)"><span class="dot"></span>Day 2</a>
+      <a href="#day-3" style="--c:var(--d3)"><span class="dot"></span>Day 3</a>
+    </nav>
+  </div>
+</header>
+
+<main class="inner">
+  <div class="notice" id="offline" hidden>Couldn't load the shared plan right now. Reload the page to try again.</div>
+
+  <section id="v-bookings" class="view" data-view>
+    <div class="hero">
+      <div>
+        <span class="eyebrow">Adeev &amp; Atira · New York</span>
+        <h1>29 Nov – 1 Dec 2026</h1>
+        <p>Fly into Newark, two nights at Hilton Times Square, then the bus to Boston.</p>
+      </div>
+      <div class="count" id="count"></div>
+    </div>
+    <div class="strip" id="strip"></div>
+    <a class="mapcard" target="_blank" rel="noopener" href="https://www.google.com/maps/d/viewer?mid=1b0zexnam9TvXmqxeY6nzWPUxNAHljL8">
+      <span class="pinic"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg></span>
+      <span><b>Our Google map</b><span>Every stop for the trip, in Google My Maps</span></span>
+      <span class="go">Open ↗</span>
+    </a>
+    <div>
+      <div class="sect-h"><h2>Bookings</h2><span class="eyebrow">All times New York</span></div>
+      <div class="tickets">
+        <article class="ticket">
+          <div class="t-top">
+            <div class="t-kind"><span class="eyebrow"><i>✈</i>Flight · UA237</span><span class="t-date">Sun 29 Nov</span></div>
+            <div class="route">
+              <div class="pt"><div class="code">BNA</div><div class="tm">5:40 AM</div><div class="pl">Nashville</div></div>
+              <div class="arr">——→</div>
+              <div class="pt"><div class="code">EWR</div><div class="tm">8:55 AM</div><div class="pl">Newark Liberty</div></div>
+            </div>
+          </div>
+          <div class="t-body">
+            <dl class="kv">
+              <dt>Passenger</dt><dd>Adeev Mardia · seat 2A · United First</dd>
+              <dt>Bags</dt><dd>2 checked bags free, up to 70 lb each</dd>
+            </dl>
+            <p class="t-note">Bag drop at BNA closes 45 minutes before departure, so be there by 4:55 AM.</p>
+          </div>
+        </article>
+        <article class="ticket">
+          <div class="t-top">
+            <div class="t-kind"><span class="eyebrow"><i>H</i>Hotel · 2 nights</span><span class="t-date">29 Nov – 1 Dec</span></div>
+            <div class="route">
+              <div class="pt"><div class="pre">Check-in</div><div class="code">Sun 29</div><div class="tm">from 4:00 PM</div></div>
+              <div class="arr">——→</div>
+              <div class="pt"><div class="pre">Check-out</div><div class="code">Tue 1</div><div class="tm">by 11:00 AM</div></div>
+            </div>
+          </div>
+          <div class="t-body">
+            <dl class="kv">
+              <dt>Hotel</dt><dd>Hilton New York Times Square, 234 W 42nd St</dd>
+              <dt>Room</dt><dd>Basic room, 1 king · 2 adults · under Atira Mardia</dd>
+            </dl>
+            <p class="t-note">Atira checks in with the booking card and matching photo ID. Minimum check-in age 21. Non-refundable.</p>
+            <a class="gm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Hilton%20New%20York%20Times%20Square&query_place_id=ChIJ7yGup1RYwokRnGBh8EluQWs">Open in Google Maps ↗</a>
+          </div>
+        </article>
+        <article class="ticket">
+          <div class="t-top">
+            <div class="t-kind"><span class="eyebrow"><i>B</i>Bus · OurBus</span><span class="t-date">Tue 1 Dec</span></div>
+            <div class="route">
+              <div class="pt"><div class="code">NYC</div><div class="tm">6:00 PM</div><div class="pl">Port Authority, Gate 21</div></div>
+              <div class="arr">——→</div>
+              <div class="pt"><div class="code">BOS</div><div class="tm">10:30 PM</div><div class="pl">Back Bay, 177 Huntington Ave</div></div>
+            </div>
+          </div>
+          <div class="t-body">
+            <dl class="kv">
+              <dt>Passengers</dt><dd>Atira Mardia, Adeev Mardia</dd>
+              <dt>Luggage</dt><dd>1 suitcase (up to 50 lb) + 1 handbag each</dd>
+            </dl>
+            <p class="t-note">Be at Gate 21 by 5:45 PM; board with the QR code in Atira's OurBus email.</p>
+            <a class="gm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Port%20Authority%20Bus%20Terminal%2C%20625%208th%20Ave%2C%20New%20York">Open in Google Maps ↗</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-reserve" class="view" data-view hidden>
+    <div class="hero" style="border-bottom-color:var(--warn)">
+      <div><span class="eyebrow">Tables, tickets and reservations</span><h1>To book</h1><p>Everything that needs a reservation or a ticket before you go.</p></div>
+      <div><button type="button" class="btn primary edit-only" id="add-res">+ Add something to book</button></div>
+    </div>
+    <div class="list-wrap">
+      <div class="progress"><span class="eyebrow">Booked</span><b id="res-n">–</b><div class="bar"><i id="res-bar"></i></div></div>
+      <ul class="items" id="res-list"></ul>
+    </div>
+  </section>
+
+  <section id="v-todo" class="view" data-view hidden>
+    <div class="hero" style="border-bottom-color:var(--ok)">
+      <div><span class="eyebrow">Before you go</span><h1>To-do</h1><p>Ticks are shared, so you both see what's done.</p></div>
+      <div><button type="button" class="btn primary edit-only" id="add-todo">+ Add a to-do</button></div>
+    </div>
+    <div class="list-wrap">
+      <div class="progress"><span class="eyebrow">Done</span><b id="todo-n">–</b><div class="bar"><i id="todo-bar"></i></div></div>
+      <ul class="items" id="todo-list"></ul>
+    </div>
+  </section>
+
+  <section id="v-day" class="view" data-view hidden>
+    <div class="dayhead" id="dayhead">
+      <span class="eyebrow" id="d-k"></span>
+      <h1 id="d-title"></h1>
+      <div class="row">
+        <button type="button" class="btn solid edit-only" id="d-add">+ Add event</button>
+        <button type="button" class="btn edit-only" id="d-rename">Rename day</button>
+      </div>
+    </div>
+    <div class="day">
+      <div id="d-list"></div>
+      <aside class="side">
+        <a class="mapcard" target="_blank" rel="noopener" href="https://www.google.com/maps/d/viewer?mid=1b0zexnam9TvXmqxeY6nzWPUxNAHljL8">
+          <span class="pinic"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg></span>
+          <span><b>Our Google map</b><span>Opens in Google My Maps</span></span>
+          <span class="go">↗</span>
+        </a>
+        <p class="t-note edit-only">Drag the ⋮⋮ handle or use the arrows to reorder. Tap an event to edit it.</p>
+      </aside>
+    </div>
+  </section>
+
+  <p class="foot">Bookings come from your United, Hotels.com and OurBus emails. Changes to events, the to-book list and to-dos save automatically and everyone with the link sees them.</p>
+</main>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+const MYMAP = 'https://www.google.com/maps/d/viewer?mid=1b0zexnam9TvXmqxeY6nzWPUxNAHljL8';
+const DAYMETA = {
+  'day-1': {num:'1', c:'var(--d1)', k:'Day 1 · Sunday 29 November', short:'Sun 29'},
+  'day-2': {num:'2', c:'var(--d2)', k:'Day 2 · Monday 30 November', short:'Mon 30'},
+  'day-3': {num:'3', c:'var(--d3)', k:'Day 3 · Tuesday 1 December', short:'Tue 1'}
+};
+const MODES = {walk:'Walk', subway:'Subway', taxi:'Taxi', car:'Car', ferry:'Ferry', none:'None'};
+const GMODE = {walk:'walking', subway:'transit', taxi:'driving', car:'driving', ferry:'transit'};
+
+/* ---------- State ---------- */
+const S = {days:{'day-1':null,'day-2':null,'day-3':null}, todo:null, reserve:null};
+let canWrite = false, loaded = false;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 12);
+const fmt = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; return `${((h + 11) % 12) + 1}:${String(m).padStart(2,'0')} ${ap}`; };
+const fmtShort = t => fmt(t).replace(' AM','').replace(' PM','');
+const gsearch = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const gdir = (a, b, m) => `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(a)}&destination=${encodeURIComponent(b)}&travelmode=${GMODE[m] || 'walking'}`;
+
+function toast(msg, undo){
+  const r = document.getElementById('toast-root');
+  r.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${undo ? '<button type="button" id="undo">Undo</button>' : ''}</div>`;
+  if (undo) document.getElementById('undo').onclick = () => { undo(); r.innerHTML = ''; };
+  clearTimeout(toast.t); toast.t = setTimeout(() => r.innerHTML = '', undo ? 6000 : 2200);
+}
+async function save(path, data){
+  if (!sb) return;
+  const id = path.split('/').pop();
+  const attempt = () => sb.from('trip_docs').upsert({id, data, updated_at: new Date().toISOString()});
+  let {error} = await attempt();
+  if (error){ await new Promise(r => setTimeout(r, 700)); ({error} = await attempt()); }
+  if (error) toast('Couldn’t save that change. Check your connection.');
+}
+const saveDay = id => save('trip/' + id, S.days[id]);
+const saveList = name => save('trip/' + name, S[name]);
+
+/* ---------- Modal (question form) ---------- */
+function openForm({title, fields, submit, onDelete, deleteLabel}){
+  const root = document.getElementById('modal-root');
+  const prevFocus = document.activeElement;
+  const fieldHTML = f => {
+    if (f.type === 'pills') return `<div class="q" role="radiogroup" aria-labelledby="lbl-${f.name}"><span id="lbl-${f.name}">${f.label}</span>${f.help ? `<small>${f.help}</small>` : ''}<div class="pills">${f.options.map(([v,l]) => `<label><input type="radio" name="${f.name}" value="${v}" ${f.value === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div></div>`;
+    if (f.type === 'row') return `<div class="two">${f.fields.map(fieldHTML).join('')}</div>`;
+    const id = 'f-' + f.name;
+    const ctl = f.type === 'textarea' ? `<textarea id="${id}" name="${f.name}" placeholder="${esc(f.placeholder||'')}">${esc(f.value||'')}</textarea>`
+      : f.type === 'select' ? `<select id="${id}" name="${f.name}">${f.options.map(([v,l]) => `<option value="${esc(v)}" ${f.value === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+      : `<input id="${id}" name="${f.name}" type="${f.type||'text'}" value="${esc(f.value||'')}" placeholder="${esc(f.placeholder||'')}" ${f.min!=null?`min="${f.min}"`:''} ${f.required?'required':''} autocomplete="off">`;
+    return `<label class="q" ${f.showIf ? `data-showif="${f.showIf}"` : ''} for="${id}"><span>${f.label}</span>${f.help ? `<small>${f.help}</small>` : ''}${ctl}</label>`;
+  };
+  root.innerHTML = `<div class="scrim" id="scrim"><form class="sheet" id="form" role="dialog" aria-modal="true" aria-labelledby="form-h" novalidate>
+    <h2 id="form-h">${title}</h2>${fields.map(fieldHTML).join('')}<div class="err" id="form-err" hidden></div>
+    <div class="bar">${onDelete ? `<button type="button" class="btn danger spacer" id="f-del">${deleteLabel || 'Delete'}</button>` : ''}<button type="button" class="btn" id="f-cancel">Cancel</button><button type="button" class="btn primary" id="f-save">Save</button></div></form></div>`;
+  const form = document.getElementById('form');
+  const close = () => { root.innerHTML = ''; document.removeEventListener('keydown', onKey); prevFocus && prevFocus.focus && prevFocus.focus(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  const syncShow = () => form.querySelectorAll('[data-showif]').forEach(el => { const [n, v] = el.dataset.showif.split('!='); const cur = (form.querySelector(`[name="${n}"]:checked`) || {}).value; el.hidden = cur === v || !cur; });
+  form.addEventListener('change', syncShow); syncShow();
+  document.getElementById('f-cancel').onclick = close;
+  document.getElementById('scrim').addEventListener('mousedown', e => { if (e.target.id === 'scrim') close(); });
+  if (onDelete) document.getElementById('f-del').onclick = () => { close(); onDelete(); };
+  const doSave = () => {
+    const data = {};
+    form.querySelectorAll('input,select,textarea').forEach(el => { if (!el.name) return; if (el.type === 'radio'){ if (el.checked) data[el.name] = el.value; } else data[el.name] = el.value; });
+    let err;
+    try { err = submit(data); } catch (x) { err = 'Something went wrong saving that. Try again.'; }
+    if (err){ const el = document.getElementById('form-err'); el.textContent = err; el.hidden = false; return; }
+    close();
+  };
+  document.getElementById('f-save').onclick = doSave;
+  form.addEventListener('submit', e => { e.preventDefault(); doSave(); });
+  form.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT'){ e.preventDefault(); doSave(); } });
+  const first = form.querySelector('input:not([type=radio]),textarea,select'); first && first.focus();
+}
+
+/* ---------- Events ---------- */
+function eventForm(dayId, ev){
+  const day = S.days[dayId]; const evs = day.events;
+  const isNew = !ev;
+  const posOpts = [['auto','Sort by start time'],['start','At the start of the day'], ...evs.map(x => ['after:' + x.id, 'After: ' + x.title]), ['end','At the end of the day']];
+  openForm({
+    title: isNew ? 'Add an event' : 'Edit event',
+    fields: [
+      {name:'title', label:'What are you doing?', placeholder:'e.g. Lunch at Din Tai Fung', value: ev?.title, required:true},
+      {name:'place', label:'Where is it?', help:'Used for the Google Maps link. A place name works.', placeholder:'e.g. Liberty Bagels Midtown', value: ev?.place},
+      {name:'time', label:'What time?', type:'time', value: ev?.time},
+      ...(isNew ? [{name:'pos', type:'select', label:'Where should it go in the day?', value:'auto', options:posOpts}] : []),
+      {name:'notes', label:'Any notes? (optional)', type:'textarea', placeholder:'Booking details, what to order, who to meet…', value: ev?.notes}
+    ],
+    submit: d => {
+      if (!d.title.trim()) return 'Give the event a name.';
+      const obj = {id: ev?.id || uid(), title:d.title.trim(), place:(d.place||'').trim(), time:d.time||'', notes:(d.notes||'').trim()};
+      if (isNew){
+        if (d.pos === 'start') evs.unshift(obj);
+        else if (d.pos === 'end') evs.push(obj);
+        else if (d.pos && d.pos.startsWith('after:')){ const i = evs.findIndex(x => x.id === d.pos.slice(6)); evs.splice(i + 1, 0, obj); }
+        else {
+          if (!obj.time) evs.push(obj);
+          else { let i = evs.findIndex(x => x.time && x.time > obj.time); if (i < 0) i = evs.length; evs.splice(i, 0, obj); }
+        }
+      } else { const t = evs.find(x => x.id === ev.id); for (const k of ['end','mode','min']) delete t[k]; Object.assign(t, obj); }
+      renderDay(); saveDay(dayId); toast(isNew ? 'Event added' : 'Event saved');
+    },
+    onDelete: isNew ? null : () => deleteEvent(dayId, ev.id),
+    deleteLabel:'Delete event'
+  });
+}
+function deleteEvent(dayId, id){
+  const evs = S.days[dayId].events, i = evs.findIndex(x => x.id === id); if (i < 0) return;
+  const [gone] = evs.splice(i, 1);
+  renderDay(); saveDay(dayId);
+  toast(`Deleted “${gone.title}”`, () => { S.days[dayId].events.splice(i, 0, gone); renderDay(); saveDay(dayId); });
+}
+function moveEvent(dayId, from, to){
+  const evs = S.days[dayId].events; if (to < 0 || to >= evs.length || from === to) return;
+  const [x] = evs.splice(from, 1); evs.splice(to, 0, x);
+  renderDay(); saveDay(dayId);
+  const btn = document.querySelector(`.tl > li[data-id="${x.id}"] .card .main`); btn && btn.focus();
+}
+
+/* ---------- Routing ---------- */
+let curDay = null;
+function route(){
+  const h = (location.hash || '#bookings').slice(1);
+  const name = DAYMETA[h] ? 'day' : (['todo','reserve'].includes(h) ? h : 'bookings');
+  document.querySelectorAll('[data-view]').forEach(s => s.hidden = s.id !== 'v-' + name);
+  const active = '#' + (name === 'day' || name !== 'bookings' ? h : 'bookings');
+  document.querySelectorAll('.tabs a').forEach(a => { if (a.getAttribute('href') === active){ a.setAttribute('aria-current','page'); a.scrollIntoView({block:'nearest', inline:'nearest'}); } else a.removeAttribute('aria-current'); });
+  if (name === 'day'){ curDay = h; renderDay(); }
+  scrollTo(0, 0);
+}
+addEventListener('hashchange', route);
+
+/* ---------- Render: bookings strip ---------- */
+function renderStrip(){
+  document.getElementById('strip').innerHTML = Object.entries(DAYMETA).map(([id, m]) => {
+    const d = S.days[id], evs = d ? d.events : [];
+    const timed = evs.filter(e => e.time);
+    const sub = !d ? (loaded ? 'Nothing planned yet' : 'Loading…') : !evs.length ? 'Nothing planned yet' : `${evs.length} ${evs.length === 1 ? 'event' : 'events'}${timed.length ? ` · from ${fmt(timed[0].time)}` : ''}`;
+    return `<a href="#${id}"><span class="k" style="color:${m.c}"><span class="dot" style="background:${m.c}"></span>Day ${m.num} · ${m.short}</span><b>${esc(d && d.title || 'Not planned yet')}</b><span class="s">${sub}</span></a>`;
+  }).join('');
+}
+
+/* ---------- Render: day ---------- */
+const ICON = {
+  up:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5-5 5 5"/></svg>',
+  down:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg>',
+  del:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10"/></svg>',
+  grip:'<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="7" cy="5" r="1.5"/><circle cx="13" cy="5" r="1.5"/><circle cx="7" cy="10" r="1.5"/><circle cx="13" cy="10" r="1.5"/><circle cx="7" cy="15" r="1.5"/><circle cx="13" cy="15" r="1.5"/></svg>',
+  edit:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/></svg>'
+};
+function renderDay(){
+  renderStrip();
+  if (!curDay) return;
+  const m = DAYMETA[curDay], d = S.days[curDay];
+  const view = document.getElementById('v-day'); view.style.setProperty('--c', m.c);
+  document.getElementById('dayhead').dataset.num = m.num;
+  document.getElementById('d-k').textContent = m.k;
+  document.getElementById('d-title').textContent = d && d.title ? d.title : (loaded ? 'Not planned yet' : 'Loading…');
+  const L = document.getElementById('d-list');
+  if (!d || !d.events.length){
+    L.innerHTML = `<div class="empty"><b>${loaded ? 'Nothing planned yet' : 'Loading the plan…'}</b>${loaded ? `<span>Add the first event for this day.</span>${canWrite ? '<button type="button" class="btn primary" data-add>+ Add event</button>' : ''}` : ''}</div>`;
+    applyWrite(); return;
+  }
+  const evs = d.events;
+  L.innerHTML = '<ol class="tl" id="tl">' + evs.map((ev, i) => {
+    return `<li data-id="${ev.id}"><div class="ev">
+      <div class="when">${ev.time ? fmt(ev.time) : '—'}</div>
+      <div class="rail"><span class="node">${i + 1}</span></div>
+      <div class="card">
+        <div class="main" tabindex="0" role="button" aria-label="Edit ${esc(ev.title)}">
+          <h4>${esc(ev.title)}</h4>
+          ${ev.place ? `<div class="addr"><a class="gm" target="_blank" rel="noopener" href="${gsearch(ev.place)}">Google Maps ↗</a></div>` : ''}
+          ${ev.notes ? `<p class="notes">${esc(ev.notes)}</p>` : ''}
+        </div>
+        <div class="tools edit-only">
+          <button type="button" class="icon-btn" data-act="up" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>${ICON.up}</button>
+          <button type="button" class="icon-btn" data-act="down" aria-label="Move down" ${i === evs.length - 1 ? 'disabled' : ''}>${ICON.down}</button>
+          <button type="button" class="icon-btn" data-act="del" aria-label="Delete ${esc(ev.title)}">${ICON.del}</button>
+          <button type="button" class="icon-btn handle" data-act="drag" aria-label="Drag to reorder">${ICON.grip}</button>
+        </div>
+      </div></div></li>`;
+  }).join('') + `</ol>${canWrite ? `<div class="addrow"><div></div><div></div><button type="button" class="addbtn" data-add>+ Add an event</button></div>` : ''}`;
+  applyWrite();
+}
+const dl = document.getElementById('d-list');
+dl.addEventListener('click', e => {
+  if (e.target.closest('a')) return;
+  if (e.target.closest('[data-add]')){ ensureDay(); return eventForm(curDay); }
+  const li = e.target.closest('.tl > li'); if (!li) return;
+  const evs = S.days[curDay].events, i = evs.findIndex(x => x.id === li.dataset.id);
+  const act = e.target.closest('[data-act]');
+  if (act){
+    if (act.dataset.act === 'up') moveEvent(curDay, i, i - 1);
+    else if (act.dataset.act === 'down') moveEvent(curDay, i, i + 1);
+    else if (act.dataset.act === 'del') deleteEvent(curDay, evs[i].id);
+    return;
+  }
+  if (e.target.closest('.main') && canWrite) eventForm(curDay, evs[i]);
+});
+dl.addEventListener('keydown', e => {
+  const main = e.target.closest('.main'); if (!main || !canWrite) return;
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); const id = main.closest('li').dataset.id; eventForm(curDay, S.days[curDay].events.find(x => x.id === id)); }
+});
+const ensureDay = () => { if (!S.days[curDay]) S.days[curDay] = {title:'', events:[]}; return S.days[curDay]; };
+document.getElementById('d-add').onclick = () => { ensureDay(); eventForm(curDay); };
+document.getElementById('d-rename').onclick = () => {
+  const d = ensureDay();
+  openForm({title:'Rename this day', fields:[{name:'title', label:'What should this day be called?', value:d.title, placeholder:'e.g. Brooklyn and the ferry', required:true}],
+    submit: x => { if (!x.title.trim()) return 'Give the day a name.'; d.title = x.title.trim(); renderDay(); saveDay(curDay); }});
+};
+
+/* Drag to reorder (pointer events: mouse and touch) */
+let drag = null;
+dl.addEventListener('pointerdown', e => {
+  const h = e.target.closest('.handle'); if (!h || !canWrite) return;
+  e.preventDefault();
+  const li = h.closest('li'), list = document.getElementById('tl');
+  h.setPointerCapture(e.pointerId);
+  const rect = li.getBoundingClientRect();
+  drag = {li, list, h, startY:e.clientY, offset:e.clientY - rect.top, from:[...list.children].indexOf(li)};
+  li.classList.add('dragging');
+});
+dl.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const {li, list} = drag;
+  li.style.transform = 'none';
+  const dy = e.clientY - drag.startY;
+  // find where the pointer is among siblings
+  const sibs = [...list.children].filter(x => x !== li);
+  let before = null;
+  for (const s of sibs){ const r = s.getBoundingClientRect(); if (e.clientY < r.top + r.height / 2){ before = s; break; } }
+  const firstTop = li.getBoundingClientRect().top;
+  if (before !== li.nextElementSibling || (before === null && li !== list.lastElementChild)){
+    list.insertBefore(li, before);
+    drag.startY += li.getBoundingClientRect().top - firstTop;
+  }
+  li.style.transform = `translateY(${e.clientY - drag.startY}px)`;
+  const vh = innerHeight; if (e.clientY < 90) scrollBy(0, -10); else if (e.clientY > vh - 60) scrollBy(0, 10);
+});
+const endDrag = () => {
+  if (!drag) return;
+  const {li, list, from} = drag; drag = null;
+  li.classList.remove('dragging'); li.style.transform = '';
+  const ids = [...list.children].map(x => x.dataset.id), to = ids.indexOf(li.dataset.id);
+  const evs = S.days[curDay].events;
+  S.days[curDay].events = ids.map(id => evs.find(x => x.id === id));
+  renderDay(); if (to !== from) saveDay(curDay);
+};
+dl.addEventListener('pointerup', endDrag); dl.addEventListener('pointercancel', endDrag);
+
+/* ---------- Render: to-do + to-book ---------- */
+function renderTodo(){
+  const L = S.todo ? S.todo.items : [];
+  const n = L.filter(x => x.done).length;
+  document.getElementById('todo-n').textContent = S.todo ? `${n}/${L.length}` : '–';
+  document.getElementById('todo-bar').style.width = L.length ? (n / L.length * 100) + '%' : '0';
+  document.getElementById('todo-list').innerHTML = !S.todo ? `<li class="notice">${loaded ? 'No to-dos yet.' : 'Loading…'}</li>` : !L.length ? '<li class="notice">No to-dos yet.</li>' : L.map(x => `<li class="item${x.done?' done':''}" data-id="${x.id}">
+    <input type="checkbox" id="td-${x.id}" ${x.done?'checked':''} ${canWrite?'':'disabled'} aria-label="Done">
+    <label class="txt" for="td-${x.id}">${x.when ? `<span class="wh">${esc(x.when)}</span>` : ''}<span class="ti">${esc(x.t)}</span>${x.d ? `<span class="td">${esc(x.d)}</span>` : ''}</label>
+    <div class="acts edit-only"><button type="button" class="icon-btn" data-act="edit" aria-label="Edit">${ICON.edit}</button><button type="button" class="icon-btn" data-act="del" aria-label="Delete">${ICON.del}</button></div></li>`).join('');
+  applyWrite();
+}
+function todoForm(x){
+  openForm({title: x ? 'Edit to-do' : 'Add a to-do', fields:[
+    {name:'t', label:'What needs doing?', value:x?.t, placeholder:'e.g. Buy a portable charger', required:true},
+    {name:'when', label:'By when? (optional)', value:x?.when, placeholder:'e.g. Before packing'},
+    {name:'d', label:'Details (optional)', type:'textarea', value:x?.d}
+  ], submit: d => {
+    if (!d.t.trim()) return 'Say what needs doing.';
+    const obj = {id:x?.id || uid(), t:d.t.trim(), when:d.when.trim(), d:d.d.trim(), done:x?.done || false};
+    if (x) Object.assign(S.todo.items.find(i => i.id === x.id), obj); else S.todo.items.push(obj);
+    renderTodo(); saveList('todo');
+  }, onDelete: x ? () => delItem('todo', x.id) : null, deleteLabel:'Delete to-do'});
+}
+function renderRes(){
+  const L = S.reserve ? S.reserve.items : [];
+  const n = L.filter(x => x.status === 'done').length;
+  document.getElementById('res-n').textContent = S.reserve ? `${n}/${L.length}` : '–';
+  document.getElementById('res-bar').style.width = L.length ? (n / L.length * 100) + '%' : '0';
+  document.getElementById('res-list').innerHTML = !S.reserve ? `<li class="notice">${loaded ? 'Nothing to book yet.' : 'Loading…'}</li>` : !L.length ? '<li class="notice">Nothing to book yet.</li>' : L.map(x => `<li class="item res" data-id="${x.id}">
+    <div class="txt"><span class="ti">${esc(x.name)}</span><div class="meta">${x.when ? `<span>${esc(x.when)}</span>` : ''}${x.people ? `<span>${esc(x.people)}</span>` : ''}${x.conf ? `<span>Confirmation <code>${esc(x.conf)}</code></span>` : ''}${x.link ? `<a class="gm" target="_blank" rel="noopener" href="${esc(/^https?:\/\//.test(x.link) ? x.link : 'https://' + x.link)}">Where to book ↗</a>` : ''}</div>${x.d ? `<span class="td">${esc(x.d)}</span>` : ''}</div>
+    <div class="acts" style="align-items:center"><button type="button" class="status ${x.status === 'done' ? 'done' : 'todo'}" data-act="toggle" ${canWrite?'':'disabled'}>${x.status === 'done' ? '✓ Booked' : 'To book'}</button><span class="edit-only" style="display:flex"><button type="button" class="icon-btn" data-act="edit" aria-label="Edit">${ICON.edit}</button><button type="button" class="icon-btn" data-act="del" aria-label="Delete">${ICON.del}</button></span></div></li>`).join('');
+  applyWrite();
+}
+function resForm(x){
+  openForm({title: x ? 'Edit booking' : 'Add something to book', fields:[
+    {name:'name', label:'What needs booking?', value:x?.name, placeholder:'e.g. Top of the Rock tickets', required:true},
+    {type:'row', fields:[
+      {name:'when', label:'For when?', value:x?.when, placeholder:'e.g. Mon 30 Nov, 7 PM'},
+      {name:'people', label:'For how many?', value:x?.people, placeholder:'e.g. 2 people'}
+    ]},
+    {name:'status', type:'pills', label:'Is it booked yet?', value:x?.status || 'todo', options:[['todo','Not yet'],['done','Booked']]},
+    {name:'conf', label:'Confirmation number (optional)', value:x?.conf},
+    {name:'link', label:'Where do you book it? (optional link)', value:x?.link, placeholder:'e.g. resy.com'},
+    {name:'d', label:'Notes (optional)', type:'textarea', value:x?.d}
+  ], submit: d => {
+    if (!d.name.trim()) return 'Say what needs booking.';
+    const obj = {id:x?.id || uid(), name:d.name.trim(), when:d.when.trim(), people:d.people.trim(), status:d.status || 'todo', conf:d.conf.trim(), link:d.link.trim(), d:d.d.trim()};
+    if (x) Object.assign(S.reserve.items.find(i => i.id === x.id), obj); else S.reserve.items.push(obj);
+    renderRes(); saveList('reserve');
+  }, onDelete: x ? () => delItem('reserve', x.id) : null, deleteLabel:'Delete booking'});
+}
+function delItem(list, id){
+  const arr = S[list].items, i = arr.findIndex(x => x.id === id); if (i < 0) return;
+  const [gone] = arr.splice(i, 1);
+  (list === 'todo' ? renderTodo : renderRes)(); saveList(list);
+  toast('Deleted', () => { S[list].items.splice(i, 0, gone); (list === 'todo' ? renderTodo : renderRes)(); saveList(list); });
+}
+document.getElementById('todo-list').addEventListener('change', e => {
+  const li = e.target.closest('.item'); if (!li || e.target.type !== 'checkbox') return;
+  const x = S.todo.items.find(i => i.id === li.dataset.id); x.done = e.target.checked; renderTodo(); saveList('todo');
+});
+document.getElementById('todo-list').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return; const id = a.closest('.item').dataset.id;
+  if (a.dataset.act === 'edit') todoForm(S.todo.items.find(i => i.id === id)); else if (a.dataset.act === 'del') delItem('todo', id);
+});
+document.getElementById('res-list').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return; const id = a.closest('.item').dataset.id, x = S.reserve.items.find(i => i.id === id);
+  if (a.dataset.act === 'toggle'){ x.status = x.status === 'done' ? 'todo' : 'done'; renderRes(); saveList('reserve'); }
+  else if (a.dataset.act === 'edit') resForm(x); else if (a.dataset.act === 'del') delItem('reserve', id);
+});
+document.getElementById('add-todo').onclick = () => { if (!S.todo) S.todo = {items:[]}; todoForm(); };
+document.getElementById('add-res').onclick = () => { if (!S.reserve) S.reserve = {items:[]}; resForm(); };
+
+function applyWrite(){ document.querySelectorAll('.edit-only').forEach(el => el.hidden = !canWrite); }
+
+/* ---------- Countdown + copy ---------- */
+(() => { const ms = new Date('2026-11-29T08:55:00-05:00') - new Date(), d = Math.ceil(ms/86400000), el = document.getElementById('count');
+  el.innerHTML = d > 0 ? `<b>${d}</b><span>${d===1?'day':'days'} until landing</span>` : ms > -3*86400000 ? `<b>Now</b><span>enjoy the trip</span>` : ''; })();
+document.addEventListener('click', e => { const b = e.target.closest('.copy'); if (!b) return;
+  const ok = () => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1400); };
+  const sel = () => { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+  try { navigator.clipboard.writeText(b.dataset.copy).then(ok, sel); } catch(_) { sel(); } });
+
+/* ---------- Data ---------- */
+function renderAll(){ renderStrip(); renderTodo(); renderRes(); if (curDay) renderDay(); applyWrite(); }
+const clone = v => JSON.parse(JSON.stringify(v));
+const norm = {
+  day: (id, v) => { v = v ? clone(v) : null; return v ? {title: v.title || '', events: Array.isArray(v.events) ? v.events : []} : {title:'', events:[]}; },
+  list: v => { v = v ? clone(v) : null; return v ? {items: Array.isArray(v.items) ? v.items : []} : {items:[]}; }
+};
+const SB_URL = 'https://ohntypeynodqwacdvqnz.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9obnR5cGV5bm9kcXdhY2R2cW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MzMwNDIsImV4cCI6MjEwOTIwOTA0Mn0.AYgU0BdISAAriBb9_G2kGYRtH1LNrZ33MZqwYVwRxR4';
+let sb = null;
+function applyDoc(id, data){
+  if (DAYMETA[id]){ if (drag && curDay === id) return; S.days[id] = norm.day(id, data); }
+  else if (id === 'todo' || id === 'reserve') S[id] = norm.list(data);
+}
+async function loadAll(){
+  const {data, error} = await sb.from('trip_docs').select('id,data');
+  if (error) throw error;
+  for (const row of data) applyDoc(row.id, row.data);
+  for (const id of [...Object.keys(DAYMETA)]) if (!S.days[id]) S.days[id] = norm.day(id, null);
+  if (!S.todo) S.todo = norm.list(null); if (!S.reserve) S.reserve = norm.list(null);
+}
+async function boot(){
+  route(); renderAll();
+  try {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    await loadAll();
+    canWrite = true; loaded = true;
+    document.getElementById('offline').hidden = true;
+    renderAll();
+    sb.channel('trip').on('postgres_changes', {event:'*', schema:'public', table:'trip_docs'}, p => {
+      if (p.new && p.new.id){ applyDoc(p.new.id, p.new.data); renderAll(); }
+    }).subscribe();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadAll().then(renderAll).catch(() => {}); });
+  } catch (e) {
+    loaded = true; document.getElementById('offline').hidden = false; renderAll();
+  }
+}
+boot();
+</script>
+
+</body></html>
